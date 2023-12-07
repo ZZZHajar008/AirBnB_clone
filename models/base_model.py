@@ -1,6 +1,6 @@
 from uuid import uuid4
 from datetime import datetime
-from file import storage
+from modelis.file import storage
 
 class BaseModel:
     def __init__(self, *args, **kwargs):

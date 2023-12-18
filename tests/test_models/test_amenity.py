@@ -15,8 +15,8 @@ class TestAmenity(unittest.TestCase):
         self.assertIsInstance(new_amenity, BaseModel)
 
     def test_Amenity_attributes(self):
-        """Test that the calass of Amenity had a name attribute"""
-        mew_amenity = Amenity()
+        """Test that the class of Amenity had a name attribute"""
+        new_amenity = Amenity()
         self.assertTrue("name" in new_amenity.__dir__())
 
     def test_Amenity_attributes_Type(self):

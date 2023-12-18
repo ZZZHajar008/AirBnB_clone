@@ -6,6 +6,7 @@ The entry point of the command interpreter
 
 """
 import cmd
+import re
 from models.base_model import BaseModel
 from models import storage
 from models.engine.file_storage import FileStorage
@@ -58,8 +59,8 @@ class HBNBCommand(cmd.Cmd):
 
         if class_is_availible:
             keys = storage.all().keys()
-            l = len(class_name) + 1
-            IDs = [i[l:] for i in keys if i.startswith(class_name)]
+            length = len(class_name) + 1
+            IDs = [i[length:] for i in keys if i.startswith(class_name)]
             completions = [arg for arg in IDs if arg.startswith(text)]
             return completions
         elif line.startswith(f"{command}"):
@@ -95,7 +96,7 @@ class HBNBCommand(cmd.Cmd):
             print("** class name missing **")
         elif args[0] not in self.CLASSES:
             print("** class doesn't exist **")
-        elif len(args) != 2:
+        elif len(args) < 2:
             print("** instance id missing **")
         elif args[0]+"."+args[1] not in storage.all().keys():
             print("** no instance found **")
@@ -165,10 +166,10 @@ class HBNBCommand(cmd.Cmd):
             attr = args[2]
             val = args[3]
             attr_type = type(getattr(obj, attr, None))
-            if attr_type is not type(None):
-                setattr(obj, attr, attr_type(val))
-            else:
+            if attr_type.__name__ == "NoneType":
                 setattr(obj, attr, val)
+            else:
+                setattr(obj, attr, attr_type(val))
             storage.save()
 
     def complete_update(self, text, line, begidx, endidx):
@@ -176,7 +177,8 @@ class HBNBCommand(cmd.Cmd):
         return self.for_complet(text, line, "update")
 
     def help_update(self):
-        print("Usage: update <class name> <id> py " + \
+        """THe update usage help"""
+        print("Usage: update <class name> <id> py "
               "<attribute name> \"<attribute value>\""
               "\nUpdates an instance based on the class "
               "name and id by adding or updating attribute")
@@ -192,11 +194,50 @@ class HBNBCommand(cmd.Cmd):
         """Handle the case of attr.command()"""
         ret = cmd.Cmd.parseline(self, line)
         cls, command = ret[0], ret[1]
-        if cls in self.CLASSES and command == ".all()":
-            return ("all", cls, line)
-        if cls in self.CLASSES and command == ".count()":
-            return ("count", cls, line)
+        if cls in self.CLASSES and command.startswith("."):
+            return self.start_with_dot_syntax(line)
+
         return ret
+
+    def start_with_dot_syntax(self, line):
+        ret = cmd.Cmd.parseline(self, line)
+        cls, command = ret[0], ret[1]
+
+        if command == ".all()":
+            return ("all", cls, line)
+        if command == ".count()":
+            return ("count", cls, line)
+        if command.startswith(".show("):
+            occurrence = re.search(r'\("([\w-]*)"\)', line)
+            if occurrence is None:
+                return ("show", cls, "show ")
+            else:
+                input_id = occurrence.groups()[0]
+                return ("show", f"{cls} {input_id}", f"show {cls} {input_id}")
+        if command.startswith(".destroy("):
+            occurrence = re.search(r'\("([\w-]*)"\)', line)
+            if occurrence is None:
+                return ("destroy", cls, "destroy ")
+            else:
+                input_id = occurrence.groups()[0]
+                return ("destroy", f"{cls} {input_id}",
+                        f"destroy {cls} {input_id}")
+        if command.startswith(".update("):
+            # regex = r'\("([\w-]*)", "([\w-]*)", "([\w-]*)"\)'
+            regex = r'\("([\w-]*)"(, "([\w-]*)")?(, "([\w-]*)")?\)'
+            occurrence = re.search(regex, line)
+            if occurrence is None:
+                print("here?")
+                return ("update", cls, "update ")
+            else:
+                grps = occurrence.groups()
+                grps = [el for i, el in enumerate(grps) if i % 2 == 0 and el]
+                str1 = f"{cls} {' '.join(grps)}"
+                str2 = f"{command} {cls} {' '.join(grps)}"
+                return ("update", str1, str2)
+        else:
+            return ret
+
 
 if __name__ == '__main__':
     HBNBCommand().cmdloop()
